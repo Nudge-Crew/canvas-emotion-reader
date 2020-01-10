@@ -10,8 +10,8 @@ app = Flask(__name__)
 
 
 # Add "self" parameter when working with Google Cloud.
-@app.route('/canvas_api', methods=['GET'])
-def reader():
+@app.route('/emotion', methods=['GET'])
+def emotion():
     # Allows GET requests from any origin with the Content-Type
     # header and caches preflight response for an 3600s
     headers = {
@@ -39,6 +39,7 @@ def reader():
 
     return jsonify(content)
 
+# Get Emotions from EmotionAPI by content
 def call_emotion_api(content):
     default_emotion_api_url = 'https://us-central1-school-230709.cloudfunctions.net/translate_data'
 
@@ -66,6 +67,7 @@ def call_emotion_api(content):
 
     return url.json()
 
+# Get emotions from emotionAPI
 def read_attachments(attachments):
     content = MultiDict()
 
@@ -74,7 +76,7 @@ def read_attachments(attachments):
 
     return content
 
-
+# Read a PDF and return content
 def reader(url):
     poolManager = urllib3.PoolManager()
     response = poolManager.request('GET', url)

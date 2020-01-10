@@ -43,13 +43,13 @@ Example environmental variables:
 Google cloud functions requires an extra parameter named `self` in the `canvas_api` method.
 When using Google Cloud Functions, in `main.py` change:
 ```python
-def canvas_api():
+def emotion():
 ```
 
 to
 
 ```python
-def canvas_api(self):
+def emotion(self):
 ```
 
 ## Run Flask
@@ -57,63 +57,34 @@ set Environmental Variable `CANVAS_BASE_URL` to the canvas api environment e.g `
 In order to run flask, you just need to execute `flask run`.
 
 # Endpoints
-The only endpoint this function has is `/canvas_api`, here some parameters are expected.
+The only endpoint this function has is `/emotion`, here some parameters are expected.
 
 Headers:
-* Authorization - Reserved for Authorization headers for external use such as Google Functions or internal authentication.
 * X-Canvas-Authorization - Canvas Authorization header / Access Token in Bearer format, as we need access to your Canvas courses.
 
 Parameters;
-* Endpoint - Contains the endpoint to the canvas API url after `https://fhict.instructure.com/api/v1/`.
-* Canvas related parameters - Parameters expected by canvas itself such as `student_id`.
+* `course_id` - Contains the Canvas Course the Assignment and Submission is from
+* `assignment_id` - Contains the Canvas Assignment the Submission is from
+* `submission_id` - Contains a canvas submission of a specific Assignment.
 
-This should work with most (if not all) canvas endpoints (GET) that use basic parameters.
-
-## Examples
-##### Without extra parameters
+## HTTP Request
 ```json
 GET { 
-  "endpoint": "/canvas_api",
+  "endpoint": "/emotion",
   "headers": {
     "X-Canvas-Authorization": "Bearer {Canvas_Access_Token}"
   },
   "query": {
-    "endpoint": "courses",
+    "course_id": "{CANVAS_COURSE_ID}", 
+    "assignment_id": "{CANVAS_ASSIGNMENT_ID}", 
+    "submission_id": "{CANVAS_SUBMISSION_ID}", 
   }
 }
 ```
 
-##### With extra parameters
-
-Query Parameters expected by Canvas API are also expected as a query parameter in this endpoint
-
-```json
-GET { 
-  "endpoint": "/canvas_api",
-  "headers": {
-    "X-Canvas-Authorization": "Bearer {Canvas_Access_Token}"
-  },
-  "query": {
-    "endpoint": "courses/5034/gradebook_history/days",
-    "student_id": "9047"
-  }
-}
-```
-
-##### With Secured Google Cloud Functions or external Authentication
-
-The `Authorization` token is used for Authorization from e.g Google Cloud Functions.
-
-```json
-GET { 
-  "endpoint": "/canvas_api",
-  "headers": {
-    "Authorization": "Bearer {Authorization_Token}",
-    "X-Canvas-Authorization": "Bearer {Canvas_Access_Token}"
-  },
-  "query": {
-    "endpoint": "courses/5034/gradebook_history/days",
-    "student_id": "9047"
-  }
-}
-```
+# Workflow
+1. Find the submission from Canvas
+2. Download all attachments of a submission
+3. Extract content (text) from the PDF files.
+4. Pass content to Emotion API
+5. Return emotions for each attachment
