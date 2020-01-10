@@ -37,21 +37,16 @@ def reader():
 
     content = read_attachments(attachments)
 
-    emotions = MultiDict()
-
-    for k, v in content.items():
-        emotions.add(k, call_emotion_api(v))
-
-    return jsonify({
-        "test": emotions
-    })
+    return jsonify(content)
 
 def call_emotion_api(content):
     default_emotion_api_url = 'https://us-central1-school-230709.cloudfunctions.net/translate_data'
 
-    data = json.dumps({
-        "data": content.replace('\n', '\\n')
-    })
+    decoded_content = bytes(content, "utf-8").decode("unicode_escape").encode('latin1').decode('utf8')
+
+    data = {
+        "data": decoded_content
+    }
 
     headers = {
         'Content-Type': 'application/json',
@@ -63,13 +58,19 @@ def call_emotion_api(content):
         json=data,
         headers=headers
     )
+
+    if url.status_code is not 200:
+        return {
+            "error": "Unable to read emotions from text"
+        }
+
     return url.json()
 
 def read_attachments(attachments):
     content = MultiDict()
 
     for a in attachments:
-        content.add(a['filename'], reader(a['url']))
+        content.add(a['filename'], call_emotion_api(reader(a['url'])))
 
     return content
 
