@@ -1,10 +1,18 @@
 import canvas_api_caller as canvas
 from flask import Flask, jsonify, request, json
-import urllib3
-from tika import parser
 from werkzeug.datastructures import MultiDict
 import requests
 import os
+import io
+
+# PDFMiner
+from pdfminer.pdfparser import PDFParser
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFTextExtractionNotAllowed
+from pdfminer.layout import LAParams, LTTextBox, LTTextLine
+from pdfminer.converter import PDFPageAggregator
 
 app = Flask(__name__)
 
@@ -21,7 +29,7 @@ def emotion():
     }
 
     if request.method == 'OPTIONS':
-        return ('', 204, headers)
+        return '', 204, headers
 
     access_token = request.headers.get('X-Canvas-Authorization')
 
@@ -33,25 +41,30 @@ def emotion():
 
     json_response = canvas.call(access_token, endpoint)
     response = json.loads(json_response)
-    attachments = response['message']['attachments']
+    response_message = response['message']
+    response_submission_type = response_message['submission_type']
 
-    content = read_attachments(attachments)
+    content = ''
+
+    if response_submission_type == 'online_text_entry':
+        content = call_emotion_api(response_message['body'])
+    elif response_submission_type == 'online_upload':
+        attachments = response_message['attachments']
+        content = read_attachments(attachments)
 
     return jsonify(content)
+
 
 # Get Emotions from EmotionAPI by content
 def call_emotion_api(content):
     default_emotion_api_url = 'https://us-central1-school-230709.cloudfunctions.net/translate_data'
 
-    decoded_content = bytes(content, "utf-8").decode("unicode_escape").encode('latin1').decode('utf8')
-
     data = {
-        "data": decoded_content
+        "data": content
     }
 
     headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json'
     }
 
     url = requests.post(
@@ -60,28 +73,78 @@ def call_emotion_api(content):
         headers=headers
     )
 
-    if url.status_code is not 200:
+    if url.status_code is 500:
         return {
             "error": "Unable to read emotions from text"
         }
 
     return url.json()
 
-# Get emotions from emotionAPI
+# Read an attachment from the 'attachments' key in a canvas assignment response.
+# Each element should atleast contain 'filename' and 'url'
 def read_attachments(attachments):
     content = MultiDict()
 
     for a in attachments:
-        content.add(a['filename'], call_emotion_api(reader(a['url'])))
+        url = a['url']
+        filename = a['filename']
+
+        if filename.endswith('.pdf'):
+            content.add(filename, call_emotion_api(reader(url)))
 
     return content
 
-# Read a PDF and return content
+
+# Download and read the contents of a PDF through a url.
 def reader(url):
-    poolManager = urllib3.PoolManager()
-    response = poolManager.request('GET', url)
-    data = response.data
+    r = requests.get(url)
+    data = io.BytesIO(r.content)
 
-    raw = parser.from_buffer(data)
+    # Create parser object to parse the pdf content
+    parser = PDFParser(data)
 
-    return raw['content']
+    # Store the parsed content in PDFDocument object
+    document = PDFDocument(parser)
+
+    # Check if document is extractable, if not abort
+    if not document.is_extractable:
+        raise PDFTextExtractionNotAllowed
+
+    # Create PDFResourceManager object that stores shared resources
+    # such as fonts or images
+    rsrcmgr = PDFResourceManager()
+
+    # set parameters for analysis
+    laparams = LAParams()
+
+    # Create a PDFDevice object which translates interpreted
+    # information into desired format
+    # Device to connect to resource manager to store shared resources
+    # device = PDFDevice(rsrcmgr)
+    # Extract the decive to page aggregator to get LT object elements
+    device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+
+    # Create interpreter object to process content from PDFDocument
+    # Interpreter needs to be connected to resource manager for shared
+    # resources and device
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+
+    # Initialize the text
+    extracted_text = ""
+
+    # Ok now that we have everything to process a pdf document,
+    # lets process it page by page
+    for page in PDFPage.create_pages(document):
+        # As the interpreter processes the page stored in PDFDocument
+        # object
+        interpreter.process_page(page)
+        # The device renders the layout from interpreter
+        layout = device.get_result()
+        # Out of the many LT objects within layout, we are interested
+        # in LTTextBox and LTTextLine
+        for lt_obj in layout:
+            if (isinstance(lt_obj, LTTextBox) or
+                    isinstance(lt_obj, LTTextLine)):
+                extracted_text += lt_obj.get_text()
+
+    return extracted_text

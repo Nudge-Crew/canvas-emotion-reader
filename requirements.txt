@@ -3,3 +3,4 @@ requests==2.22.0
 Werkzeug==0.16.0
 canvas_api_caller==1.0.7
 tika==1.23
+pdfminer
