@@ -38,8 +38,6 @@ def emotion():
     response_message = response['message']
     response_submission_type = response_message['submission_type']
 
-    content = ''
-
     if response_submission_type == 'online_text_entry':
         content = call_emotion_api(response_message['body'])
     elif response_submission_type == 'online_upload':
