@@ -31,16 +31,10 @@ def emotion():
     if request.method == 'OPTIONS':
         return '', 204, headers
 
-    access_token = request.headers.get('X-Canvas-Authorization')
-
     params = request.args
-    course_id = params.get('course_id')
-    assignment_id = params.get('assignment_id')
-    submission_id = params.get('submission_id')
-    endpoint = f"courses/{course_id}/assignments/{assignment_id}/submissions/{submission_id}"
+    access_token = request.headers.get('X-Canvas-Authorization')
+    response = call_canvas(access_token, params)
 
-    json_response = canvas.call(access_token, endpoint)
-    response = json.loads(json_response)
     response_message = response['message']
     response_submission_type = response_message['submission_type']
 
@@ -51,8 +45,27 @@ def emotion():
     elif response_submission_type == 'online_upload':
         attachments = response_message['attachments']
         content = read_attachments(attachments)
+    else:
+        return jsonify({
+            "error": f"Filetype: {response_submission_type} is not supported"
+        })
 
-    return jsonify(content)
+    return jsonify(content), 200, headers
+
+
+# Call the canvas API and return the response
+def call_canvas(access_token, params):
+    access_token = access_token
+
+    course_id = params.get('course_id')
+    assignment_id = params.get('assignment_id')
+    submission_id = params.get('submission_id')
+    endpoint = f"courses/{course_id}/assignments/{assignment_id}/submissions/{submission_id}"
+
+    json_response = canvas.call(access_token, endpoint)
+    response = json.loads(json_response)
+
+    return response
 
 
 # Get Emotions from EmotionAPI by content
@@ -79,6 +92,7 @@ def call_emotion_api(content):
         }
 
     return url.json()
+
 
 # Read an attachment from the 'attachments' key in a canvas assignment response.
 # Each element should atleast contain 'filename' and 'url'

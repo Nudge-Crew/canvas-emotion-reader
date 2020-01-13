@@ -54,6 +54,7 @@ def emotion(self):
 
 ## Run Flask
 set Environmental Variable `CANVAS_BASE_URL` to the canvas api environment e.g `https://fhict.test.instructure.com/api/v1/`
+Also set environmental variable `EMOTION_API_URL` to the emotion API endpoint e.g `https://us-central1-school-230709.cloudfunctions.net/translate_data`
 In order to run flask, you just need to execute `flask run`.
 
 # Endpoints
