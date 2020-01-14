@@ -89,3 +89,13 @@ GET {
 3. Extract content (text) from the PDF files.
 4. Pass content to Emotion API
 5. Return emotions for each attachment
+
+
+# Canvas Feedback (Problem)
+Canvas uses a diffirent server and system for document management, we are able to get a non-annotated PDF from canvas, however we aren't able to get access to annotated pdf's after feedback has been given.
+
+As Canvas uses DocViewer for their document management, we'll need access to that system, which is hosted on instructure's servers.
+Additional apiKey's are required in order to work with this system, [as described in their documentation](https://canvadocs-lor.instructure.com/docs/docs/keys.html).
+
+Access to the systems need to be requested to Instructure for the appropriate server. 
+FHICT uses the [eu-west-1](https://canvadocs-lor.instructure.com/docs/docs/environments.html#production) server for DocViewer.
