@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
 app.init(debug=IS_DEV)
 
-from app.functions.submissionEmotionReader import emotion
+from app.functions.emotion import emotion
 
 if IS_DEV:
     from flask import Flask, request
